@@ -236,10 +236,11 @@ Public Class FrmParametri
         ElseIf Campo = "#" Then
             Cursor.Current = Cursors.Default
             i_Inter = LeggiFileIni("Canale1", "Inter")
-            TxtWSAZ.Text = Mid(Messaggio, 7, 3)  & "." & Mid(Messaggio, 10, 3)
-            TxtWSEL.Text = Mid(Messaggio, 13, 2) & "." & Mid(Messaggio, 15, 3)
-            TxtUSAZ.Text = Mid(Messaggio, 18, 3) & "." & Mid(Messaggio, 21, 3)
-            TxtUSEL.Text = Mid(Messaggio, 24, 2) & "." & Mid(Messaggio, 26, 3)
+            ' C03: risposta Stow/Unstow con 2 decimali (C10: 3), campi spostati
+            TxtWSAZ.Text = Mid(Messaggio, 7, 3)  & "." & Mid(Messaggio, 10, 2)
+            TxtWSEL.Text = Mid(Messaggio, 12, 2) & "." & Mid(Messaggio, 14, 2)
+            TxtUSAZ.Text = Mid(Messaggio, 16, 3) & "." & Mid(Messaggio, 19, 2)
+            TxtUSEL.Text = Mid(Messaggio, 21, 2) & "." & Mid(Messaggio, 23, 2)
             b_Parametri = False
             i_Cont = 0
         End If
