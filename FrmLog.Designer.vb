@@ -1090,6 +1090,7 @@ Partial Class FrmLog
         Me.TxtPol.BackColor = System.Drawing.Color.Yellow
         Me.TxtPol.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
         Me.TxtPol.Location = New System.Drawing.Point(90, 9)
+        Me.TxtPol.Visible = False   ' C03: nascosto nel VB6
         Me.TxtPol.Name = "TxtPol"
         Me.TxtPol.TextAlign = System.Drawing.ContentAlignment.MiddleRight
         Me.TxtPol.Size = New System.Drawing.Size(73, 27)
@@ -1805,7 +1806,6 @@ Partial Class FrmLog
         Me.TxtFrequency.ReadOnly = True
         Me.TxtFrequency.Size = New System.Drawing.Size(80, 22)
         Me.TxtFrequency.TabIndex = 32
-        Me.TxtFrequency.Visible = False
         '
         'TxtPowerOut
         '
@@ -1816,7 +1816,6 @@ Partial Class FrmLog
         Me.TxtPowerOut.ReadOnly = True
         Me.TxtPowerOut.Size = New System.Drawing.Size(80, 22)
         Me.TxtPowerOut.TabIndex = 33
-        Me.TxtPowerOut.Visible = False
         '
         'TdbLog
         '
@@ -1872,6 +1871,7 @@ Partial Class FrmLog
         Me.LblConfCNL6in.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
         Me.LblConfCNL6in.Font = New System.Drawing.Font("Arial", 9.0!, System.Drawing.FontStyle.Bold)
         Me.LblConfCNL6in.Location = New System.Drawing.Point(172, 708)
+        Me.LblConfCNL6in.Visible = False   ' C03: nascosto nel VB6
         Me.LblConfCNL6in.Name = "LblConfCNL6in"
         Me.LblConfCNL6in.Size = New System.Drawing.Size(44, 27)
         Me.LblConfCNL6in.TabIndex = 37
@@ -1910,7 +1910,6 @@ Partial Class FrmLog
         Me.Label4.Size = New System.Drawing.Size(92, 16)
         Me.Label4.TabIndex = 42
         Me.Label4.Text = "Frequency out"
-        Me.Label4.Visible = False
         '
         'Label5
         '
@@ -1920,7 +1919,6 @@ Partial Class FrmLog
         Me.Label5.Size = New System.Drawing.Size(68, 16)
         Me.Label5.TabIndex = 43
         Me.Label5.Text = "Power Out"
-        Me.Label5.Visible = False
         '
         'Label6
         '
@@ -1929,7 +1927,6 @@ Partial Class FrmLog
         Me.Label6.Size = New System.Drawing.Size(42, 16)
         Me.Label6.TabIndex = 44
         Me.Label6.Text = "MHz"
-        Me.Label6.Visible = False
         '
         'Label7
         '
@@ -1938,7 +1935,6 @@ Partial Class FrmLog
         Me.Label7.Size = New System.Drawing.Size(38, 16)
         Me.Label7.TabIndex = 45
         Me.Label7.Text = "dBm"
-        Me.Label7.Visible = False
         '
         'FrmLog
         '
