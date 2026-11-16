@@ -52,8 +52,7 @@ Module Gestione
                 Else
                     h = 0
                 End If
-                AzOffset1 = rs_Orbite!AzOffset
-                ElOffset1 = rs_Orbite!ElOffset
+                ' C03: AzOffset/ElOffset dell'antenna non usati (commentati nel VB6)
             Else
                 '            Response = MessageBox.Show("Non ci sono dati per l'antenna " & Antenna, vbOKOnly)
                 FrmMain.stpMessaggio.Text = "No information available for antenna "
@@ -62,8 +61,9 @@ Module Gestione
                 Exit Function
             End If
         End If
-        ' C10: dati della fase attiva (Fasi.Ultima) e comando al
-        ' polarizzatore "Z <modo><angolo>" sulla seriale PCU.
+        ' Dati della fase attiva (Fasi.Ultima). C03: nessun comando al
+        ' polarizzatore qui (il VB6 prepara "PLP ±angolo" per l'ACU ma
+        ' l'invio è commentato; la PCU non riceve mai comandi in C03).
         tmpSQL = "SELECT * FROM [Fasi] where Ultima"
         rs_App = dbOrbite.OpenRecordset(tmpSQL, dbOpenDynaset)
         If Not rs_App.BOF Then
@@ -79,22 +79,6 @@ Module Gestione
             g_Polar = t_Pol
             g_RevAz = If(IsDBNull(rs_App!RevAzErr), "", CStr(rs_App!RevAzErr))
             g_CirLin = If(IsDBNull(rs_App!CirLin), "", CStr(rs_App!CirLin))
-            '21/02/2019 Controllo del modo del Polarizzatore
-            If g_CirLin = "Linear" Then
-                d_Pol = "L"
-            ElseIf g_CirLin = "Circular" Then
-                d_Pol = "C"
-            Else
-                d_Pol = "S"
-            End If
-            Dim valPol As Double
-            If Double.TryParse(CStr(g_ValPol).Replace(",", "."), Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture, valPol) Then
-                Dim s_Polar As String = "Z " & d_Pol & If(valPol < 0, "-", "+") & Math.Abs(valPol).ToString("00.0", Globalization.CultureInfo.InvariantCulture)
-                i = Len(s_Polar) + 6
-                b_int(PCU) = True
-                b_Ricezione(PCU) = True
-                Invio(CheckSum(i.ToString("00") & s_Polar), PCU)
-            End If
         End If
         rs_App.Close
         rs_Orbite = dbOrbite.OpenRecordset("Satelliti", dbOpenDynaset)
@@ -109,8 +93,8 @@ Module Gestione
         Else
             rs_Orbite.FindFirst("NomeSatellite ='" & s_Satellite & "'")
         If Not rs_Orbite.NoMatch Then
-                ' C10: angolo di polarizzazione dal catalogo satelliti
-                g_ValPol = If(IsNumeric(rs_Orbite!polangle), CStr(rs_Orbite!polangle), "0")
+                ' C03: angolo di polarizzazione NON preso dal catalogo satelliti
+                ' (commentato nel VB6): resta quello della fase attiva.
                 Algoritmo = rs_Orbite!Algoritmo
                 If rs_Orbite!Algoritmo = 0 Or rs_Orbite!Algoritmo = 2 Then
                     AggAlgo = rs_Orbite!Algoritmo
@@ -371,6 +355,13 @@ Module Gestione
                     FrmRicezione.LblElevazione.Text = ""
                     FrmRicezione.LblAzimuthC.Text = ""
                     FrmRicezione.LblElevazioneC.Text = ""
+                    ' C03: azzera anche calcolati ed errori di puntamento
+                    AzCalc = 0
+                    ElCalc = 0
+                    FrmRicezione.LblAzError.Text = ""
+                    FrmRicezione.LblElError.Text = ""
+                    FrmRicezione.LblAzErrEn.Text = ""
+                    FrmRicezione.LblElErrEn.Text = ""
                 End If
                 '    LblInvio.Text = ""
                 b_int(ACU) = True
@@ -585,6 +576,8 @@ Module Gestione
                 d_Date = New Date(d_Date.Year, d_Date.Month, d_Date.Day, irig_hour Mod 24, irig_min Mod 60, irig_sec Mod 60)
                 Dim d_DateTxt As String = d_Date.ToString("dd/MM/yy HH.mm.ss", Globalization.CultureInfo.InvariantCulture)
                 g_Irig = "A"
+                ' C03 (come FOC6): in Augmented ricalcola le coordinate all'ora ACU
+                If i_Status = OP_AUGMENTED Then Calcolo_Coordinate(d_Date, irig_millsec)
                 If (Asc(Mid$(Messaggio, 7, 1)) And BIT1) <> 0 Then
                     g_Irig = "I"
                     FrmMain.stpData.Text = d_DateTxt & " IRIG"
@@ -676,12 +669,13 @@ Module Gestione
                 ' Drive / PCU / freni (vBytes(5))
                 If (vBytes(5) And BIT1) <> BIT1 AndAlso (vBytes(5) And BIT1) <> (vBytesold(5) And BIT1) Then ScriviAlarm("Drive ON", 0)
                 AllarmeSeAttivo(5, BIT2, "PCU Control ON", 1)
-                If (vBytes(5) And BIT3) <> BIT3 Then
+                ' C03: bit freni invertiti rispetto a C10 (Az = BIT4, El = BIT3)
+                If (vBytes(5) And BIT4) <> BIT4 Then
                     s_StatusPTIC(8) = s_StatusPTIC(8) Or &H1
                 Else
                     s_StatusPTIC(8) = s_StatusPTIC(8) And &HE
                 End If
-                If (vBytes(5) And BIT4) <> BIT4 Then
+                If (vBytes(5) And BIT3) <> BIT3 Then
                     s_StatusPTIC(10) = s_StatusPTIC(10) Or &H1
                 Else
                     s_StatusPTIC(10) = s_StatusPTIC(10) And &HE
@@ -1090,25 +1084,23 @@ Module Gestione
     End Function
 
     ''' <summary>
-    ''' Porting di InvioRic dal VB6 di C10 (Gestione.bas): invia al Down
-    ''' Converter la frequenza beacon (in Hz, "FE"), al polarizzatore
-    ''' l'angolo della fase (seriale PCU, "Z <modo><angolo>") e al
-    ''' ricevitore elevazione di fase, Rev Az e frequenza d'ingresso
-    ''' (InvioPhase), ciascuno solo se diverso dal valore a video.
-    ''' Differenza da FOC6: lì la polarizzazione andava all'ACU ("PLP")
-    ''' o via SNMP; il controllo "PolarizationAngle" del ricevitore
-    ''' resta uguale.
+    ''' Porting di InvioRic dal VB6 di C03 (Gestione.bas): invia al Down
+    ''' Converter la frequenza beacon (in Hz, "FE"), all'ACU
+    ''' l'angolo di polarizzazione ("PLP", solo in lineare) e al
+    ''' ricevitore fase El/Az, Rev Az, frequenza d'ingresso e angolo di
+    ''' polarizzazione (InvioPhase). Differenza da C10: lì la polarizzazione
+    ''' andava alla PCU ("Z <modo><angolo>").
     ''' </summary>
     Public Sub InvioRic()
         Dim inv As System.Globalization.CultureInfo = System.Globalization.CultureInfo.InvariantCulture
         Try
             FrmRicezione.TmrRic.Enabled = False
 
-            ' Frequenza beacon al Down Converter
+            ' Frequenza beacon al Down Converter (C03: confronto numerico, 9 cifre)
             If IsNumeric(g_Frequenza) AndAlso Val(g_Frequenza) > 0 Then
-                If FrmRicezione.TxtFrqBeacon.Text <> Format$(Val(g_Frequenza), "#0000.000") Then
+                If Val(FrmRicezione.TxtFrqBeacon.Text) <> Val(g_Frequenza) Then
                     Dim d_FrqBeacon As Double = Val(g_Frequenza) * 100000      ' in Hz
-                    Send_GRF = CheckDC("{" & Chr(AddressDC) & "FE" & Format$(d_FrqBeacon, "0000000000") & "}")
+                    Send_GRF = CheckDC("{" & Chr(AddressDC) & "FE" & Format$(d_FrqBeacon, "000000000") & "}")
                     b_Ricezione(GRF) = False
                     Invio(Send_GRF, GRF)
                     FrmRicezione.TxtFrqBeacon.Text = ""
@@ -1117,21 +1109,33 @@ Module Gestione
                 End If
             End If
 
-            ' Polarizzazione (solo in lineare), seriale PCU
+            ' Polarizzazione (solo in lineare): C03 la comanda all'ACU ("PLP"),
+            ' non alla PCU. Con l'antenna solo circolare non parte mai.
             Dim valPol As Double
             If g_CirLin = "Linear" AndAlso Double.TryParse(CStr(g_ValPol).Replace(",", "."), Globalization.NumberStyles.Float, inv, valPol) Then
                 If valPol.ToString("0.##", inv) <> FrmRicezione.TxtPol.Text.Replace(",", ".") Then
-                    Dim s_Polar As String = "Z " & d_Pol & If(valPol < 0, "-", "+") & Math.Abs(valPol).ToString("00.0", inv)
+                    i_Cont = 2
+                    Attesa(0.2)
+                    Dim s_Polar As String = "PLP " & If(valPol < 0, "-", "+") & Math.Abs(valPol).ToString("00.0", inv)
                     Dim lunghezza As Integer = Len(s_Polar) + 6
-                    b_int(PCU) = True
-                    b_Ricezione(PCU) = True
-                    Invio(CheckSum(lunghezza.ToString("00") & s_Polar), PCU)
+                    b_Ricezione(ACU) = False
+                    b_int(ACU) = True
+                    SEND_ACU = CheckSum(lunghezza.ToString("00") & s_Polar)
+                    FrmRicezione.TmrTimeoutMSG(ACU).Enabled = False
+                    InvioACU(SEND_ACU)
                 End If
             End If
 
             ' Ricevitore: elevazione di fase
             If IsNumeric(g_PhaseEl) AndAlso Val(g_PhaseEl) > 0 AndAlso g_PhaseEl <> FrmRicezione.TxtPhaseEl.Text Then
                 InvioPhase("+" & g_PhaseEl, 0, 5, ComponentCode)
+            End If
+
+            ' Ricevitore: fase azimut (C03). Nel VB6 il confronto era con
+            ' frmRicezione.txtPhaseAz, controllo inesistente: con On Error
+            ' Resume Next l'invio partiva comunque. Stesso effetto qui.
+            If IsNumeric(g_PhaseAz) AndAlso Val(g_PhaseAz) > 0 Then
+                InvioPhase("+" & g_PhaseAz, 0, 22, ComponentCode)
             End If
 
             ' Ricevitore: Rev Az
@@ -1147,8 +1151,8 @@ Module Gestione
                 InvioPhase(Format$(Val(g_Frequenza) * 1000, "00000000"), 0, 10, ComponentCode)
             End If
 
-            ' Ricevitore: angolo di polarizzazione
-            If IsNumeric(g_ValPol) AndAlso Val(g_ValPol) <> Val(Format$(PolarizationAngle, "0.00")) Then
+            ' Ricevitore: angolo di polarizzazione (C03: inviato sempre)
+            If IsNumeric(g_ValPol) Then
                 InvioPhase(g_ValPol, 1, 7, ComponentCode)
             End If
         Catch ex As Exception
@@ -1172,7 +1176,7 @@ Module Gestione
         '            End If
         '            g_PolErr = frmRicezione.TxtPolErr
         ' frmRicezione.TxtLna not migrated
-        '            tmpSQL = "SELECT * FROM [Fasi] where Frequenza = '" & Format$(g_Frequenza, "#000.00#") & "' and Pol = '" & g_Polar & "' and Lna ='" & g_LNA & "' and RevAzErr = '" & g_RevAz & "' and PolErr = '" & g_PolErr & "'"
+        '            tmpSQL = "SELECT * FROM [Fasi] where Frequenza = '" & Format$(g_Frequenza, "#0000.0#") & "' and Pol = '" & g_Polar & "' and Lna ='" & g_LNA & "' and RevAzErr = '" & g_RevAz & "' and PolErr = '" & g_PolErr & "'"
         tmpSQL = "SELECT * FROM [Fasi] where CDbl(Frequenza) = '" & CDbl(g_Frequenza) & "' and Pol = '" & g_Polar & "' and Lna ='" & g_LNA & "'"
         '"  'and RevAzErr = '" & g_RevAz & "'"
         rs_InvioFrequenza = dbOrbite.OpenRecordset(tmpSQL, dbOpenDynaset)
@@ -1269,7 +1273,7 @@ Module Gestione
                 rs_InvioFrequenza.Edit
             End If
             rs_InvioFrequenza!sat = FrmRicezione.LblSatellite.Text
-            rs_InvioFrequenza!FREQUENZA = Format$(g_Frequenza, "#000.00#")
+            rs_InvioFrequenza!FREQUENZA = Format$(g_Frequenza, "#0000.0#")
             rs_InvioFrequenza!POL = g_Polar
             If IsNumeric(g_LNA) Then
                 rs_InvioFrequenza!LNA = g_LNA
@@ -1286,7 +1290,7 @@ Module Gestione
             Else
                 rs_InvioFrequenza!polangle = 0
             End If
-            g_Frequenza = Format$(rs_InvioFrequenza!FREQUENZA, "#000.00#")
+            g_Frequenza = Format$(rs_InvioFrequenza!FREQUENZA, "#0000.0#")
             g_PhaseEl = rs_InvioFrequenza!faseEl
             '                g_PhaseAz = rs_InvioFrequenza!faseAz
             g_LNA = rs_InvioFrequenza!LNA
@@ -1334,7 +1338,7 @@ Module Gestione
             If g_ChangePhase = "Y" Then
                 '                    DbExecute("UPDATE [Fasi]  Ultima = " & vbUnchecked)
                 ' LblPol/TxtLna not migrated - use globals
-                tmpSQL = "SELECT * FROM [Fasi] where Sat ='" & FrmRicezione.LblSatellite.Text & "' and cdbl(Frequenza) = '" & CDbl(Format$(g_Frequenza, "#000.00")) & "' and Pol = '" & g_Polar & "' and Lna ='" & g_LNA & "'"
+                tmpSQL = "SELECT * FROM [Fasi] where Sat ='" & FrmRicezione.LblSatellite.Text & "' and cdbl(Frequenza) = '" & CDbl(g_Frequenza) & "' and Pol = '" & g_Polar & "' and Lna ='" & g_LNA & "'"
                 rs_InvioFrequenza = dbOrbite.OpenRecordset(tmpSQL, dbOpenDynaset)
                 If Not rs_InvioFrequenza.BOF Then
                     rs_InvioFrequenza.MoveFirst
@@ -1389,7 +1393,7 @@ Module Gestione
             Else
                 DbExecute("UPDATE [Fasi]  Ultima = " & vbUnchecked)
                 b_Checked = False
-                tmpSQL = "SELECT * FROM [Fasi] where Sat ='" & FrmRicezione.LblSatellite.Text & "' and cdbl(Frequenza) = '" & CDbl(Format$(g_Frequenza, "#000.00")) & "' and Pol = '" & g_Polar & "' and Lna ='" & g_LNA & "'"
+                tmpSQL = "SELECT * FROM [Fasi] where Sat ='" & FrmRicezione.LblSatellite.Text & "' and cdbl(Frequenza) = '" & CDbl(g_Frequenza) & "' and Pol = '" & g_Polar & "' and Lna ='" & g_LNA & "'"
                 rs_InvioFrequenza = dbOrbite.OpenRecordset(tmpSQL, dbOpenDynaset)
                 If Not rs_InvioFrequenza.BOF Then
                     rs_InvioFrequenza.MoveFirst
@@ -1438,7 +1442,7 @@ Module Gestione
                 Else
                     rs_InvioFrequenza.AddNew
                     rs_InvioFrequenza!sat = FrmRicezione.LblSatellite.Text
-                    rs_InvioFrequenza!FREQUENZA = Format$(g_Frequenza, "#000.00#")
+                    rs_InvioFrequenza!FREQUENZA = Format$(g_Frequenza, "#0000.0#")
                     rs_InvioFrequenza!POL = g_Polar
                     If IsNumeric(g_LNA) Then
                         rs_InvioFrequenza!LNA = g_LNA
@@ -1504,7 +1508,7 @@ Module Gestione
         CambioFreq = True
         If IsNumeric(Freq) And Freq > 0 Then
             d_FrqBeacon = Freq      'porto tutto a kHerz
-            g_Frequenza = Format$(Freq / 1000, "#000.0#")                     '17/10/2022 (formato C10)
+            g_Frequenza = Format$(Freq / 1000, "#0000.0#")                     ' formato C03
             InvioFrequenza()
             ' frmRicezione.TxtFrqBeacon/CmbBcnFrequency not migrated
             f_FrqBeacon = 0
