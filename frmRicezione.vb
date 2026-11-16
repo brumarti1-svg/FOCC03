@@ -282,9 +282,9 @@ Partial Public Class FrmRicezione
         If Not b_frequency Then Return
         If LblConfCNL4in.BackColor <> COL_OK OrElse Not IsNumeric(CmbBcnFreq.Text) Then Return
         If TxtFrqBeacon.Text <> CmbBcnFreq.Text Then
-            ' C10: frequenza in Hz con il comando "FE" e CheckDC (FOC6: kHz, "F").
+            ' Frequenza in Hz con il comando "FE" e CheckDC; C03: 9 cifre (C10: 10).
             Dim dFrqBeacon As Double = Val(CmbBcnFreq.Text) * 100000
-            Send_GRF = CheckDC("{" & Chr(AddressDC) & "FE" & Format$(dFrqBeacon, "0000000000") & "}")
+            Send_GRF = CheckDC("{" & Chr(AddressDC) & "FE" & Format$(dFrqBeacon, "000000000") & "}")
             b_Ricezione(GRF) = False
             Invio(Send_GRF, GRF)
             TxtFrqBeacon.Text = ""

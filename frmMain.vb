@@ -13,7 +13,11 @@ Imports System.Windows.Forms
 '     anche per PCU; allarme GRF "GRF Com Error"
 '   - polling Down Converter: frequenza (CmdGRF "FE?") e attenuazioni
 '     A/B (FrmDownConverter.CmdATA/CmdATB) invece di stato/tensioni
-'   - polling periodico del polarizzatore (CmdPol, ogni i_InterPol s)
+'   - C03: NIENTE polling del polarizzatore (in C10 CmdPol ogni
+'     i_InterPol s sulla PCU): la polarizzazione arriva dall'ACU.
+'     Del VB6 di C03 non sono state riprese, perché correzioni fatte
+'     poi in C10: soglia orario "(i_IntCom * 1000) + 1" s (unità
+'     sbagliata, 301 s), Unstow in Stand By, watchdog Cont2 a 35.
 '   - richiesta di stato ACU solo se la precedente ha avuto risposta
 '     (Not b_Ricezione(ACU)), come nel VB6 di C10
 '   - controllo orario ACU con soglia 10 s e controllo della data;
@@ -883,22 +887,8 @@ Partial Public Class FrmMain
                 End If
             End If
 
-            ' Interrogazione polarizzatore (C10, seriale PCU): ogni i_InterPol s.
-            Dim MilSecP1 As Long
-            If MilSec < MilSecP Then
-                MilSecP1 = CLng(MilSec + MilOra - MilSecP)
-            Else
-                MilSecP1 = CLng(MilSec - MilSecP)
-            End If
-            If MilSecP1 >= i_InterPol * 1000 Then
-                MilSecP = MilSec
-                b_Ricezione(PCU) = True
-                b_int(PCU) = True
-                If frmRicezioneInstance IsNot Nothing Then
-                    frmRicezioneInstance.CmdPol()
-                    frmRicezioneInstance.TmrTimeoutMSG(PCU).Enabled = True
-                End If
-            End If
+            ' C03: nessuna interrogazione del polarizzatore (la PCU non è
+            ' mai interrogata nel VB6; la polarizzazione arriva dall'ACU).
 
             Dim MilSecL1 As Long
             If MilSec < MilSecL Then
