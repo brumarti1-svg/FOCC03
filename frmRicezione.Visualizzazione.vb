@@ -59,37 +59,16 @@ Partial Public Class FrmRicezione
         TxtElEr.Text = s_LevEl
 
         Dim lnaPrima As String = LblLNA.Text
-        If (vBytesold(10) And BIT1) = BIT1 Then
-            LblLNA.Text = "1"
-        ElseIf (vBytesold(10) And BIT2) = BIT2 Then
-            LblLNA.Text = "2"
-        ElseIf (vBytesold(10) And BIT3) = BIT3 Then
-            LblLNA.Text = "3"
-        End If
+        ' C03: due LNA (BIT1 = 1, altrimenti 2)
+        LblLNA.Text = If((vBytesold(10) And BIT1) = BIT1, "1", "2")
         If lnaPrima <> LblLNA.Text Then ricChange = True
         g_LNA = LblLNA.Text
 
+        ' C03: polarizzazione solo circolare, RHCP/LHCP dal BIT4 del byte 10
         Dim polPrima As String = LblPol.Text
-        Dim inPosizione As Boolean = (vBytesold(10) And BIT3) = BIT3
-        Select Case i_Pol
-            Case 0
-                If inPosizione Then
-                    LblPol1.Text = "Linear"
-                    If IsNumeric(Mid$(s_POL, 1, 4)) Then TxtPol.Text = Format$(Val(Mid$(s_POL, 1, 4)) / 10, "#00.0")
-                Else
-                    TxtPol.Text = ""
-                    LblPol1.Text = "Running"
-                End If
-            Case 1
-                TxtPol.Text = ""
-                If inPosizione Then
-                    LblPol1.Text = "Circular"
-                    LblPol.Text = If((vBytesold(10) And BIT4) = BIT4, "RHCP", "LHCP")
-                Else
-                    LblPol1.Text = "Running"
-                    LblPol.Text = ""
-                End If
-        End Select
+        TxtPol.Text = ""
+        LblPol1.Text = "Circular"
+        LblPol.Text = If((vBytesold(10) And BIT4) = BIT4, "RHCP", "LHCP")
         If polPrima <> LblPol.Text Then ricChange = True
         g_Polar = LblPol.Text
 

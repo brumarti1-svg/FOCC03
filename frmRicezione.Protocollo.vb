@@ -121,7 +121,7 @@ Partial Public Class FrmRicezione
                     risposta = testata & "DP" & TagDato & vbCr & vbLf
                     TagDato = ""
                 Case "FD"
-                    risposta = testata & "FD" & g_Frequenza & vbCr & vbLf
+                    risposta = testata & "FD" & f_FrqBeacon & vbCr & vbLf      ' C03: frequenza letta dal D/C
                 Case "DE"
                     risposta = testata & "DE" & TagError & vbCr & vbLf
                 Case "DT"
@@ -352,20 +352,7 @@ Partial Public Class FrmRicezione
                 Return
             End If
 
-            ' C10: ordine al polarizzatore ("14Z ...") inoltrato sulla seriale PCU
-            If buffer.Contains("14Z ") Then
-                If LblConfCNL6in.BackColor = COL_OK Then
-                    Invio(ACK, MAC)
-                    b_int(PCU) = True
-                    b_Ricezione(PCU) = True
-                    Invio(buffer, PCU)
-                Else
-                    Invio(NAK, MAC)
-                End If
-                buffer = ""
-                Port_Control(Ind).Buffer = buffer
-                Return
-            End If
+            ' C03: nessun inoltro degli ordini "14Z" alla PCU (solo C10)
 
             b_int(ACU) = False
             Dim campo As String = If(buffer.Length >= 4, buffer.Substring(3, 1), "")
@@ -662,15 +649,15 @@ Partial Public Class FrmRicezione
     End Sub
 
     Private Sub ElaboraRispostaDC(frame As String)
-        If frame.Length > 5 Then
+        If frame.Length > 6 Then                                      ' C03: > 6 (C10: > 5)
             Select Case Mid$(frame, 3, 2)
                 Case "TA", "TB", "SB", "QT"
                     FrmDownConverter.PresentaDown(frame)
                 Case "FE"
                     Dim freq As String = Mid$(frame, 5, 9)
-                    If IsNumeric(freq) AndAlso Val(freq) <> 0 Then
+                    If IsNumeric(freq) AndAlso Val(freq) > 0 Then
                         f_FrqBeacon = CSng(Val(freq) / 100000)          ' Hz*100 -> MHz
-                        g_Frequenza = Format$(f_FrqBeacon, "###00.0#")
+                        g_Frequenza = Format$(f_FrqBeacon, "#0000.0#")  ' formato C03
                         If f_FrqBeacon > 0 Then TxtFrqBeacon.Text = Format$(f_FrqBeacon, "#0000.000")   '29/10/2022
                     End If
             End Select
